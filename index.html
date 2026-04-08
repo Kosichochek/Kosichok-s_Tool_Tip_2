@@ -1,39 +1,831 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тултип — Лабораторная работа (Вариант 17)</title>
-    <link rel="stylesheet" href="styles/style.css">
+    <title>Smart City Parking Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #F8F9FA; color: #1F2937; }
+        .sidebar-item.active { background-color: #0A58CA; color: white !important; }
+        .sidebar-item.active span { color: white !important; }
+        .sidebar-item.active i { color: white !important; }
+        .btn-active:active { transform: scale(0.98); }
+        .glass-modal { background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); }
+        #map { height: 400px; border-radius: 0.75rem; z-index: 10; }
+        #chartContainer { height: 300px; width: 100%; }
+        .leaflet-container { z-index: 10 !important; }
+    </style>
 </head>
-<body>
+<body class="overflow-hidden h-screen flex">
 
-    <main class="wrapper">
-        
-        <section class="demo">
-            
-            <div class="tooltip">
-                <button 
-                    class="tooltip__trigger" 
-                    aria-label="Показать подсказку" 
-                    aria-describedby="tooltip-text"
-                >
-                    ?
-                </button>
-                <span 
-                    class="tooltip__content" 
-                    id="tooltip-text" 
-                    role="tooltВip"
-                >
-                    Это всплывающая подсказка с пояснением
-                </span>
+    <div id="customAlertModal" class="hidden fixed inset-0 z-[300] glass-modal flex items-center justify-center">
+        <div class="bg-white p-6 rounded-2xl shadow-xl w-80 border text-center relative">
+            <div class="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
+                <i class="fas fa-exclamation-triangle"></i>
             </div>
+            <h3 class="text-lg font-bold mb-2 text-gray-800" data-i18n="alert_title">Внимание</h3>
+            <p id="customAlertMsg" class="text-sm text-gray-500 mb-6">Message goes here</p>
+            <button onclick="closeModal('customAlertModal')" class="bg-[#0A58CA] text-white px-6 py-2 rounded-lg font-bold w-full btn-active">ОК</button>
+        </div>
+    </div>
 
-        </section>
+    <div id="customPromptModal" class="hidden fixed inset-0 z-[300] glass-modal flex items-center justify-center">
+        <div class="bg-white p-6 rounded-2xl shadow-xl w-80 border relative">
+            <h3 id="promptTitle" class="text-lg font-bold mb-4 text-gray-800">Введите значение</h3>
+            <input type="text" id="promptInput" class="w-full border p-2 rounded-lg mb-6 focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+            <div class="flex gap-2">
+                <button onclick="submitPrompt()" class="bg-[#0A58CA] text-white px-4 py-2 rounded-lg flex-1 btn-active font-bold" data-i18n="prompt_ok">ОК</button>
+                <button onclick="closeModal('customPromptModal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex-1 font-bold" data-i18n="prompt_cancel">Отмена</button>
+            </div>
+        </div>
+    </div>
 
+    <div id="landingPage" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center">
+        <div class="max-w-2xl">
+            <h1 class="text-5xl font-bold mb-4" data-i18n="landing_title">Интеллектуальная парковка</h1>
+            <p class="text-gray-500 text-lg mb-8" data-i18n="landing_desc">Удобная система для управления городскими парковками, тарифами и занятостью.</p>
+            <div class="flex gap-4 justify-center">
+                <button onclick="login('admin')" class="bg-[#0A58CA] text-white px-8 py-3 rounded-lg font-semibold btn-active transition-all hover:bg-[#084298]">
+                    <i class="fas fa-shield-alt mr-2"></i> <span data-i18n="login_admin">Войти как Админ</span>
+                </button>
+                <button onclick="login('user')" class="bg-white border border-gray-200 px-8 py-3 rounded-lg font-semibold btn-active transition-all hover:bg-gray-50">
+                    <i class="fas fa-user mr-2"></i> <span data-i18n="login_user">Кабинет пользователя</span>
+                </button>
+            </div>
+        </div>
+        <div class="absolute top-6 right-6">
+            <div class="relative">
+                <div class="flex items-center gap-2 cursor-pointer border rounded-lg px-3 py-1.5 bg-gray-50 hover:bg-gray-100 transition-colors" onclick="document.getElementById('langMenuLanding').classList.toggle('hidden')">
+                    <i class="fas fa-globe text-gray-400"></i>
+                    <span class="text-sm font-semibold uppercase" id="landingLang">RU</span>
+                    <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+                </div>
+                <div id="langMenuLanding" class="hidden absolute right-0 mt-2 w-24 bg-white border rounded-xl shadow-xl overflow-hidden z-50">
+                    <button onclick="toggleLang('ru'); document.getElementById('langMenuLanding').classList.add('hidden')" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 hover:text-[#0A58CA] font-medium transition-colors">RU</button>
+                    <button onclick="toggleLang('en'); document.getElementById('langMenuLanding').classList.add('hidden')" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 hover:text-[#0A58CA] font-medium transition-colors">EN</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <aside id="sidebar" class="hidden w-64 border-r bg-white flex-col z-20 relative">
+        <div class="p-6 border-b cursor-pointer" onclick="logout()">
+            <h2 class="text-xl font-bold flex items-center hover:text-[#0A58CA] transition-colors">
+                <i class="fas fa-car-side text-[#0A58CA] mr-3"></i> 
+                <span data-i18n="app_title">Умный Город</span>
+            </h2>
+            <p class="text-xs text-gray-400 mt-1" data-i18n="app_subtitle">Управление парковками</p>
+        </div>
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto" id="adminNav">
+            <button onclick="showPage('dashboard')" class="sidebar-item active w-full flex items-center p-3 rounded-lg transition-all hover:bg-gray-50">
+                <i class="fas fa-th-large mr-3 text-gray-400"></i> <span class="text-gray-500 font-medium" data-i18n="nav_dashboard">Дашборд (Карта)</span>
+            </button>
+            <button onclick="showPage('tariffs')" class="sidebar-item w-full flex items-center p-3 rounded-lg transition-all hover:bg-gray-50">
+                <i class="fas fa-dollar-sign mr-3 text-gray-400"></i> <span class="text-gray-500 font-medium" data-i18n="nav_tariffs">Управление тарифами</span>
+            </button>
+            <button onclick="showPage('search')" class="sidebar-item w-full flex items-center p-3 rounded-lg transition-all hover:bg-gray-50">
+                <i class="fas fa-search mr-3 text-gray-400"></i> <span class="text-gray-500 font-medium" data-i18n="nav_search">Поиск ТС</span>
+            </button>
+            <button onclick="showPage('adminHistory')" class="sidebar-item w-full flex items-center p-3 rounded-lg transition-all hover:bg-gray-50">
+                <i class="fas fa-history mr-3 text-gray-400"></i> <span class="text-gray-500 font-medium" data-i18n="nav_history">История парковок</span>
+            </button>
+            <button onclick="showPage('analytics')" class="sidebar-item w-full flex items-center p-3 rounded-lg transition-all hover:bg-gray-50">
+                <i class="fas fa-chart-line mr-3 text-gray-400"></i> <span class="text-gray-500 font-medium" data-i18n="nav_analytics">Аналитика</span>
+            </button>
+        </nav>
+        <nav class="flex-1 p-4 space-y-2 hidden" id="userNav">
+            <button onclick="showPage('userDashboard')" class="sidebar-item active w-full flex items-center p-3 rounded-lg transition-all hover:bg-gray-50">
+                <i class="fas fa-home mr-3 text-gray-400"></i> <span class="text-gray-500 font-medium" data-i18n="nav_my_dashboard">Личный кабинет</span>
+            </button>
+            <button onclick="showPage('findParking')" class="sidebar-item w-full flex items-center p-3 rounded-lg transition-all hover:bg-gray-50">
+                <i class="fas fa-map-marker-alt mr-3 text-gray-400"></i> <span class="text-gray-500 font-medium" data-i18n="nav_find">Найти парковку</span>
+            </button>
+            <button onclick="showPage('profile')" class="sidebar-item w-full flex items-center p-3 rounded-lg transition-all hover:bg-gray-50">
+                <i class="fas fa-user-circle mr-3 text-gray-400"></i> <span class="text-gray-500 font-medium" data-i18n="nav_profile">Мой профиль</span>
+            </button>
+        </nav>
+        <div class="p-4 border-t space-y-2">
+            <button onclick="showPage('profile')" class="w-full flex items-center p-3 rounded-lg transition-all hover:bg-gray-50 text-sm" id="adminProfileBtn">
+                <i class="fas fa-user mr-3 text-gray-400"></i> <span class="text-gray-500 font-medium" data-i18n="nav_admin_profile">Профиль Админа</span>
+            </button>
+            <button onclick="logout()" class="w-full flex items-center p-3 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-500 text-sm transition-all">
+                <i class="fas fa-sign-out-alt mr-3"></i> <span data-i18n="nav_logout">Выйти</span>
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col overflow-hidden relative z-10">
+        <header class="h-16 border-b bg-white flex items-center justify-between px-8 relative z-30">
+            <div id="breadcrumb" class="text-sm font-medium text-gray-400">Дашборд (Карта)</div>
+            <div class="flex items-center gap-6">
+                <div class="relative">
+                    <i class="fas fa-bell text-gray-400 cursor-pointer hover:text-gray-600" onclick="document.getElementById('notifMenu').classList.toggle('hidden')"></i>
+                    <span id="notifCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">0</span>
+                    <div id="notifMenu" class="hidden absolute right-0 mt-3 w-64 bg-white border rounded-xl shadow-xl p-4 z-50">
+                        <h4 class="font-bold text-sm mb-2 border-b pb-2" data-i18n="recent_bookings">Недавние брони</h4>
+                        <div id="notifList" class="text-xs text-gray-500 space-y-2 max-h-40 overflow-y-auto"></div>
+                    </div>
+                </div>
+                
+                <div class="relative">
+                    <div class="flex items-center gap-2 cursor-pointer border rounded-lg px-3 py-1.5 bg-gray-50 hover:bg-gray-100 transition-colors" onclick="document.getElementById('langMenuMain').classList.toggle('hidden')">
+                        <i class="fas fa-globe text-gray-400"></i>
+                        <span class="text-sm font-semibold uppercase" id="currentLang">RU</span>
+                        <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+                    </div>
+                    <div id="langMenuMain" class="hidden absolute right-0 mt-2 w-24 bg-white border rounded-xl shadow-xl overflow-hidden z-50">
+                        <button onclick="toggleLang('ru'); document.getElementById('langMenuMain').classList.add('hidden')" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 hover:text-[#0A58CA] font-medium transition-colors">RU</button>
+                        <button onclick="toggleLang('en'); document.getElementById('langMenuMain').classList.add('hidden')" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 hover:text-[#0A58CA] font-medium transition-colors">EN</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <section class="flex-1 overflow-y-auto p-8" id="pageContent"></section>
     </main>
 
-    <script src="scripts/script.js" defer></script>
-</body>
+    <div id="bookingModal" class="hidden fixed inset-0 z-[200] glass-modal flex items-center justify-center">
+        <div class="bg-white p-6 rounded-2xl shadow-xl w-96 border">
+            <h2 class="text-xl font-bold mb-4" data-i18n="book_spot_title">Забронировать место</h2>
+            <form onsubmit="confirmBooking(event)" class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase" data-i18n="country">Формат страны</label>
+                    <select id="plateCountry" class="w-full border p-2 rounded-lg mt-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                        <option value="KZ">Kazakhstan (123ABC02)</option>
+                        <option value="RU">Russia (A123AA77)</option>
+                        <option value="ANY" data-i18n="other">Другой формат</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase" data-i18n="license_plate">Госномер</label>
+                    <input type="text" id="bookPlate" required placeholder="123ABC02" class="w-full border p-2 rounded-lg mt-1 uppercase focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase" data-i18n="duration">Время (Часов)</label>
+                    <input type="number" id="bookHours" required min="1" max="24" value="1" class="w-full border p-2 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                </div>
+                <div class="flex gap-2 mt-4">
+                    <button type="submit" class="bg-[#0A58CA] text-white px-4 py-2 rounded-lg flex-1 btn-active font-bold" data-i18n="confirm">Подтвердить</button>
+                    <button type="button" onclick="closeModal('bookingModal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex-1 font-bold" data-i18n="cancel">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
+    <div id="topUpModal" class="hidden fixed inset-0 z-[200] glass-modal flex items-center justify-center">
+        <div class="bg-white p-6 rounded-2xl shadow-xl w-96 border">
+            <h2 class="text-xl font-bold mb-4" data-i18n="top_up">Пополнить баланс</h2>
+            <form onsubmit="processTopUp(event)" class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase" data-i18n="card_num">Номер карты</label>
+                    <input type="text" id="ccNumber" required pattern="\d{16}" title="16 digits" maxlength="16" placeholder="0000 0000 0000 0000" class="w-full border p-2 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                </div>
+                <div class="flex gap-4">
+                    <div class="flex-1">
+                        <label class="text-xs font-bold text-gray-500 uppercase">Expiry</label>
+                        <input type="text" oninput="formatExpiry(this)" required pattern="\d{2}/\d{2}" placeholder="MM/YY" class="w-full border p-2 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                    </div>
+                    <div class="flex-1">
+                        <label class="text-xs font-bold text-gray-500 uppercase">CVV</label>
+                        <input type="password" required pattern="\d{3}" title="3 digits" maxlength="3" placeholder="123" class="w-full border p-2 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 uppercase" data-i18n="amount">Сумма ($)</label>
+                    <input type="number" id="topUpAmount" required min="1" max="1000" placeholder="10.00" class="w-full border p-2 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                </div>
+                <div class="flex gap-2 mt-4">
+                    <button type="submit" class="bg-[#0A58CA] text-white px-4 py-2 rounded-lg flex-1 btn-active font-bold" data-i18n="pay">Оплатить</button>
+                    <button type="button" onclick="closeModal('topUpModal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex-1 font-bold" data-i18n="cancel">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 right-6 bg-white border border-gray-100 shadow-2xl p-4 rounded-xl flex items-center gap-4 transform translate-y-24 transition-transform duration-300 z-[1000]">
+        <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-[#0A58CA]">
+            <i class="fas fa-check"></i>
+        </div>
+        <div>
+            <p class="font-bold text-sm" id="toastTitle">Обновлено</p>
+            <p class="text-xs text-gray-400" id="toastMsg">Данные сохранены.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- STATE & TRANSLATIONS ---
+        let currentRole = 'admin';
+        let currentPageId = 'dashboard';
+        let lang = 'ru'; 
+        let mapInstance = null;
+        let chartInstance = null;
+        let updateTimer = null;
+        
+        let zones = [
+            { id: 'A', name: 'Downtown Core', rate: 5.50, capacity: 50, status: 'ACTIVE', coords: [43.2551, 76.9126] },
+            { id: 'B', name: 'Business District', rate: 4.00, capacity: 80, status: 'ACTIVE', coords: [43.2600, 76.9200] },
+            { id: 'C', name: 'Residential Edge', rate: 2.00, capacity: 100, status: 'DISABLED', coords: [43.2450, 76.9050] },
+            { id: 'D', name: 'Airport Premium', rate: 8.00, capacity: 30, status: 'ACTIVE', coords: [43.3521, 77.0405] },
+            { id: 'E', name: 'Mega Mall West', rate: 3.50, capacity: 150, status: 'ACTIVE', coords: [43.2380, 76.8850] },
+            { id: 'F', name: 'Expo Center', rate: 6.00, capacity: 200, status: 'EVENT MODE', coords: [43.2100, 76.9000] },
+            { id: 'G', name: 'University Hub', rate: 1.50, capacity: 60, status: 'ACTIVE', coords: [43.2400, 76.9300] },
+            { id: 'H', name: 'Central Park North', rate: 2.50, capacity: 40, status: 'ACTIVE', coords: [43.2650, 76.9500] },
+            { id: 'I', name: 'Train Station', rate: 4.50, capacity: 90, status: 'ACTIVE', coords: [43.2750, 76.9350] },
+            { id: 'J', name: 'Old Town Square', rate: 5.00, capacity: 25, status: 'ACTIVE', coords: [43.2500, 76.9450] },
+            { id: 'K', name: 'Tech Park', rate: 3.00, capacity: 120, status: 'ACTIVE', coords: [43.2250, 76.8500] },
+            { id: 'L', name: 'River Walk', rate: 2.00, capacity: 55, status: 'ACTIVE', coords: [43.2800, 76.9100] },
+            { id: 'M', name: 'Hospital Area', rate: 1.00, capacity: 70, status: 'ACTIVE', coords: [43.2450, 76.8900] },
+            { id: 'N', name: 'Stadium Parking', rate: 15.00, capacity: 300, status: 'EVENT MODE', coords: [43.2397, 76.9489] },
+            { id: 'O', name: 'Almaty Arena', rate: 7.00, capacity: 250, status: 'ACTIVE', coords: [43.2785, 76.8300] },
+            { id: 'P', name: 'Kok Tobe Base', rate: 3.00, capacity: 45, status: 'ACTIVE', coords: [43.2355, 76.9600] },
+            { id: 'Q', name: 'Medeu Rink', rate: 10.00, capacity: 100, status: 'ACTIVE', coords: [43.1550, 77.0600] },
+            { id: 'R', name: 'Botanic Garden', rate: 2.00, capacity: 80, status: 'ACTIVE', coords: [43.2200, 76.9150] },
+            { id: 'S', name: 'Abay Theatre', rate: 4.00, capacity: 35, status: 'ACTIVE', coords: [43.2430, 76.9450] },
+            { id: 'T', name: 'Green Bazaar', rate: 5.00, capacity: 60, status: 'ACTIVE', coords: [43.2630, 76.9550] },
+            { id: 'U', name: 'Family Park', rate: 1.50, capacity: 110, status: 'ACTIVE', coords: [43.2250, 76.8350] },
+            { id: 'V', name: 'City Hall', rate: 6.50, capacity: 40, status: 'ACTIVE', coords: [43.2380, 76.9450] },
+            { id: 'W', name: 'Art Museum', rate: 3.50, capacity: 20, status: 'ACTIVE', coords: [43.2350, 76.9200] },
+            { id: 'X', name: 'Central Mosque', rate: 2.50, capacity: 50, status: 'ACTIVE', coords: [43.2680, 76.9500] }
+        ];
+        
+        let wallet = 25.50;
+        let userProfile = { name: "John Doe", email: "john@smartcity.gov", phone: "+15551234567", carPlate: "123ABC02" };
+        
+        let activeSessions = []; 
+        let allBookings = []; 
+
+        // Инициализируем историю стартовыми данными (вчера, позавчера)
+        let today = new Date();
+        let yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+        let twoDaysAgo = new Date(today); twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+        let parkingHistory = [
+            { 
+                startDate: yesterday.toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}), 
+                endDate: new Date(yesterday.getTime() + 7200000).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}), 
+                zone: 'A', plate: '777ABC02', cost: 11.00 
+            },
+            { 
+                startDate: twoDaysAgo.toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}), 
+                endDate: new Date(twoDaysAgo.getTime() + 10800000).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}), 
+                zone: 'D', plate: '123ABC02', cost: 24.00 
+            }
+        ]; 
+
+        // Генерируем график на основе истории (высчитываем выручку за последние 7 дней)
+        function getRevenueData() {
+            let labels = [];
+            let data = [];
+            for (let i = 6; i >= 0; i--) {
+                let d = new Date();
+                d.setDate(d.getDate() - i);
+                let dateStr = d.toLocaleDateString([], {day: 'numeric', month: 'short'});
+                labels.push(dateStr);
+                
+                // Суммируем профит за этот день
+                let dayTotal = parkingHistory.reduce((sum, record) => {
+                    let recordDate = new Date(record.endDate);
+                    if (recordDate.getDate() === d.getDate() && recordDate.getMonth() === d.getMonth()) {
+                        return sum + record.cost;
+                    }
+                    return sum;
+                }, 0);
+                
+                // Добавляем немного системной базы, чтобы график не был совсем пустым в предыдущие дни
+                // В реальном проекте тут будет запрос к БД.
+                let baseNoise = i === 0 ? 0 : Math.floor(Math.random() * 50) + 20; 
+                data.push(dayTotal + baseNoise);
+            }
+            return { labels, data };
+        }
+        
+        let pendingZoneId = null;
+
+        const translations = {
+            en: {
+                app_title: 'Smart City', app_subtitle: 'Parking Management', landing_title: 'Intelligent Parking Solutions', landing_desc: 'A seamless ecosystem for managing city parking, tariffs, and real-time occupancy.',
+                login_admin: 'Login as Admin', login_user: 'Enter as Resident/User', alert_title: 'Warning',
+                nav_dashboard: 'Dashboard', nav_tariffs: 'Tariff Management', nav_search: 'Vehicle Search', nav_history: 'Parking History', nav_analytics: 'Analytics', nav_my_dashboard: 'My Dashboard', nav_find: 'Find Parking', nav_profile: 'My Profile', nav_admin_profile: 'Admin Profile', nav_logout: 'Logout',
+                recent_bookings: 'Recent Bookings', live_map: 'Live Parking Map', heatmap: 'Heatmap Mode', book_spot_title: 'Book Parking Spot', country: 'Country Format', other: 'Other / Any format', license_plate: 'License Plate', duration: 'Duration (Hours)', confirm: 'Confirm', cancel: 'Cancel', top_up: 'Top Up Balance', card_num: 'Card Number', amount: 'Amount ($)', pay: 'Pay',
+                tariffs_title: 'Tariff & Zone Management', tariffs_desc: 'Configure zones and see active parked cars.', zone_name: 'Zone Name', rate_hr: 'Rate / Hr', active_cars: 'Active Cars', actions: 'Actions', edit_rate: 'Edit Rate',
+                search_title: 'Vehicle Search', search_ph: 'Enter License Plate...', location_zone: 'Location Zone', entry_time: 'Booked Hours', total_cost: 'Total Cost', delete: 'Delete', no_vehicles: 'No active vehicles found',
+                history_title: 'All Parking History', date_start: 'Start Time', date_end: 'End Time', 
+                analytics_title: 'Analytics & Reports', revenue_chart: 'Daily Revenue ($)',
+                no_parking: 'No active parking', find_spot: 'Find spot on map', wallet: 'Wallet Balance', history: 'Parking History', history_empty: 'History is empty',
+                active_session: 'Active Session', start: 'Start Time', paid_hours: 'Paid Hours', current_bill: 'Bill', btn_end: 'End', btn_extend: 'Extend', book_here: 'Book Spot Here', spot_taken: 'Spot Taken',
+                prof_title: 'Profile Settings', full_name: 'Full Name', phone: 'Phone Number', email: 'Email Address', car_plate: 'Registered Vehicle Plate', pass: 'Change Password (Opt.)', save_prof: 'Save Profile',
+                new_rate_prompt: 'New hourly rate for', prompt_ok: 'OK', prompt_cancel: 'Cancel', add_hours_prompt: 'How many hours to add?', success: 'Success', rate_updated: 'Rate updated', paid: 'Paid', no_funds: 'Not enough funds!'
+            },
+            ru: {
+                app_title: 'Умный Город', app_subtitle: 'Управление парковками', landing_title: 'Интеллектуальная парковка', landing_desc: 'Удобная система для управления городскими парковками, тарифами и занятостью.',
+                login_admin: 'Войти как Админ', login_user: 'Кабинет пользователя', alert_title: 'Внимание',
+                nav_dashboard: 'Дашборд (Карта)', nav_tariffs: 'Управление тарифами', nav_search: 'Поиск ТС', nav_history: 'История парковок', nav_analytics: 'Аналитика', nav_my_dashboard: 'Личный кабинет', nav_find: 'Найти парковку', nav_profile: 'Мой профиль', nav_admin_profile: 'Профиль Админа', nav_logout: 'Выйти',
+                recent_bookings: 'Недавние брони', live_map: 'Карта парковок', heatmap: 'Тепловая карта', book_spot_title: 'Забронировать место', country: 'Формат страны', other: 'Другой формат', license_plate: 'Госномер', duration: 'Время (Часов)', confirm: 'Подтвердить', cancel: 'Отмена', top_up: 'Пополнить баланс', card_num: 'Номер карты', amount: 'Сумма ($)', pay: 'Оплатить',
+                tariffs_title: 'Управление зонами', tariffs_desc: 'Настройка цен и просмотр машин в зонах.', zone_name: 'Название зоны', rate_hr: 'Цена / Час', active_cars: 'Машин в зоне', actions: 'Действия', edit_rate: 'Изменить цену',
+                search_title: 'Поиск автомобилей', search_ph: 'Введите госномер...', location_zone: 'Зона', entry_time: 'Забронировано (часов)', total_cost: 'Итоговая цена', delete: 'Удалить', no_vehicles: 'Автомобили не найдены',
+                history_title: 'История всех бронирований', date_start: 'Время заезда', date_end: 'Время выезда',
+                analytics_title: 'Аналитика и Отчеты', revenue_chart: 'Выручка по дням ($)',
+                no_parking: 'Нет активных парковок', find_spot: 'Найти место на карте', wallet: 'Баланс кошелька', history: 'История парковок', history_empty: 'История пуста',
+                active_session: 'Активная сессия', start: 'Время заезда', paid_hours: 'Оплачено часов', current_bill: 'Счет', btn_end: 'Завершить', btn_extend: 'Продлить', book_here: 'Забронировать здесь', spot_taken: 'Место занято',
+                prof_title: 'Настройки профиля', full_name: 'ФИО', phone: 'Номер телефона', email: 'Email', car_plate: 'Ваш госномер', pass: 'Сменить пароль', save_prof: 'Сохранить профиль',
+                new_rate_prompt: 'Новая цена для', prompt_ok: 'ОК', prompt_cancel: 'Отмена', add_hours_prompt: 'Сколько часов добавить?', success: 'Успех', rate_updated: 'Цена обновлена', paid: 'Оплачено', no_funds: 'Недостаточно средств!'
+            }
+        };
+
+        function t(key) { return translations[lang][key] || key; }
+
+        function toggleLang(l) {
+            lang = l;
+            document.getElementById('currentLang').innerText = l.toUpperCase();
+            document.getElementById('landingLang').innerText = l.toUpperCase();
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if(translations[l][key]) el.innerText = translations[l][key];
+            });
+            if(currentPageId) showPage(currentPageId);
+        }
+
+        function customAlert(message) {
+            document.getElementById('customAlertMsg').innerText = message;
+            openModal('customAlertModal');
+        }
+
+        let promptCallback = null;
+        function customPrompt(title, defaultValue, type, callback) {
+            document.getElementById('promptTitle').innerText = title;
+            const input = document.getElementById('promptInput');
+            input.type = type;
+            input.value = defaultValue;
+            promptCallback = callback;
+            openModal('customPromptModal');
+        }
+        function submitPrompt() {
+            const val = document.getElementById('promptInput').value;
+            closeModal('customPromptModal');
+            if(promptCallback) promptCallback(val);
+        }
+
+        function formatExpiry(input) {
+            input.value = input.value.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1/$2').substring(0, 5);
+        }
+
+        function login(role) {
+            currentRole = role;
+            document.getElementById('landingPage').style.display = 'none';
+            document.getElementById('sidebar').style.display = 'flex';
+            document.getElementById('adminNav').classList.toggle('hidden', role !== 'admin');
+            document.getElementById('userNav').classList.toggle('hidden', role !== 'user');
+            document.getElementById('adminProfileBtn').classList.toggle('hidden', role !== 'admin');
+            showPage(role === 'admin' ? 'dashboard' : 'userDashboard');
+        }
+
+        function logout() {
+            if(updateTimer) clearInterval(updateTimer);
+            document.getElementById('pageContent').innerHTML = ''; 
+            document.getElementById('landingPage').style.display = 'flex';
+            document.getElementById('sidebar').style.display = 'none';
+        }
+
+        function updateNotifications() {
+            document.getElementById('notifCount').innerText = allBookings.length;
+            let html = '';
+            if(allBookings.length === 0) html = '<p class="text-center p-2 text-gray-400">Пусто</p>';
+            allBookings.slice().reverse().forEach(b => {
+                html += `<div class="p-2 bg-gray-50 rounded mb-1 border"><b>${b.plate}</b> -> Zone ${b.zone}</div>`;
+            });
+            document.getElementById('notifList').innerHTML = html;
+        }
+
+        function showPage(pageId) {
+            currentPageId = pageId;
+            if(updateTimer) clearInterval(updateTimer);
+            const content = document.getElementById('pageContent');
+            const navItems = document.querySelectorAll('.sidebar-item');
+            navItems.forEach(i => i.classList.remove('active')); // Удаляем класс active
+            
+            const targetBtn = Array.from(navItems).find(btn => btn.getAttribute('onclick').includes(pageId));
+            if(targetBtn) {
+                targetBtn.classList.add('active'); // Добавляем класс active (css настроен на !important)
+                document.getElementById('breadcrumb').innerText = targetBtn.querySelector('span').innerText;
+            }
+
+            if (pageId === 'dashboard' || pageId === 'findParking') {
+                content.innerHTML = `
+                    <div class="bg-white p-6 rounded-2xl border relative shadow-sm h-[600px] flex flex-col">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="font-bold text-lg">${t('live_map')}</h4>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-gray-500 font-bold uppercase tracking-wider">${t('heatmap')}</span>
+                                <input type="checkbox" id="heatmapToggle" class="w-5 h-5 cursor-pointer">
+                            </div>
+                        </div>
+                        <div id="map" class="flex-1 w-full rounded-xl"></div>
+                    </div>`;
+                initMap(currentRole === 'user');
+
+            } else if (pageId === 'tariffs') {
+                content.innerHTML = `
+                    <div class="flex justify-between items-center mb-8">
+                        <div><h1 class="text-2xl font-bold">${t('tariffs_title')}</h1><p class="text-sm text-gray-400">${t('tariffs_desc')}</p></div>
+                    </div>
+                    <div class="bg-white rounded-2xl border overflow-hidden shadow-sm">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 border-b"><tr class="text-[10px] text-gray-400 font-bold uppercase"><th class="p-4">${t('zone_name')}</th><th class="p-4">${t('rate_hr')}</th><th class="p-4">${t('active_cars')}</th><th class="p-4">${t('actions')}</th></tr></thead>
+                            <tbody class="divide-y">${zones.map(z => {
+                                let carsInZone = allBookings.filter(b => b.zone === z.id).length;
+                                return `<tr>
+                                    <td class="p-4 font-semibold text-sm">${z.name}</td>
+                                    <td class="p-4 font-bold text-sm">$${z.rate.toFixed(2)}</td>
+                                    <td class="p-4 font-bold text-[#0A58CA]">${carsInZone}</td>
+                                    <td class="p-4"><button onclick="editRate('${z.id}')" class="text-[#0A58CA] text-xs font-bold bg-blue-50 px-3 py-1 rounded-md">${t('edit_rate')}</button></td>
+                                </tr>`
+                            }).join('')}</tbody>
+                        </table>
+                    </div>
+                `;
+            } else if (pageId === 'search') {
+                content.innerHTML = `
+                    <h1 class="text-2xl font-bold mb-4">${t('search_title')}</h1>
+                    <div class="bg-white p-4 rounded-xl border mb-6 flex gap-4 shadow-sm">
+                        <input type="text" id="searchInput" onkeyup="renderSearchTable()" placeholder="${t('search_ph')}" class="flex-1 border p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                    </div>
+                    <div class="bg-white rounded-2xl border overflow-hidden shadow-sm">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 border-b"><tr class="text-[10px] text-gray-400 font-bold uppercase"><th class="p-4">${t('license_plate')}</th><th class="p-4">${t('location_zone')}</th><th class="p-4">${t('entry_time')}</th><th class="p-4">${t('total_cost')}</th><th class="p-4 text-center">${t('delete')}</th></tr></thead>
+                            <tbody id="searchTbody" class="divide-y"></tbody>
+                        </table>
+                    </div>
+                `;
+                renderSearchTable();
+            } else if (pageId === 'adminHistory') {
+                // НОВЫЙ РАЗДЕЛ: ИСТОРИЯ ДЛЯ АДМИНА
+                let historyHtml = parkingHistory.slice().reverse().map(h => `
+                    <tr>
+                        <td class="p-4 font-mono font-bold">${h.plate}</td>
+                        <td class="p-4">Zone ${h.zone}</td>
+                        <td class="p-4 text-sm">${h.startDate}</td>
+                        <td class="p-4 text-sm">${h.endDate}</td>
+                        <td class="p-4 font-bold text-green-600">$${h.cost.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+
+                content.innerHTML = `
+                    <h1 class="text-2xl font-bold mb-6">${t('history_title')}</h1>
+                    <div class="bg-white rounded-2xl border overflow-hidden shadow-sm">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 border-b"><tr class="text-[10px] text-gray-400 font-bold uppercase"><th class="p-4">${t('license_plate')}</th><th class="p-4">${t('location_zone')}</th><th class="p-4">${t('date_start')}</th><th class="p-4">${t('date_end')}</th><th class="p-4">${t('total_cost')}</th></tr></thead>
+                            <tbody class="divide-y">${historyHtml || `<tr><td colspan="5" class="p-4 text-center text-gray-500">${t('history_empty')}</td></tr>`}</tbody>
+                        </table>
+                    </div>
+                `;
+            } else if (pageId === 'analytics') {
+                content.innerHTML = `
+                    <h1 class="text-2xl font-bold mb-6">${t('analytics_title')}</h1>
+                    <div class="bg-white p-6 rounded-2xl border shadow-sm">
+                        <div id="chartContainer"><canvas id="revenueChart"></canvas></div>
+                    </div>
+                `;
+                setTimeout(() => {
+                    if(chartInstance) chartInstance.destroy();
+                    const ctx = document.getElementById('revenueChart').getContext('2d');
+                    
+                    let chartData = getRevenueData(); // Получаем данные на основе реальной истории
+
+                    chartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: chartData.labels,
+                            datasets: [{ label: t('revenue_chart'), data: chartData.data, borderColor: '#0A58CA', backgroundColor: 'rgba(10, 88, 202, 0.1)', fill: true, tension: 0.4 }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                    });
+                }, 100);
+
+            } else if (pageId === 'userDashboard') {
+                renderUserDashboard();
+                updateTimer = setInterval(renderUserDashboard, 60000); 
+            } else if (pageId === 'profile') {
+                content.innerHTML = `
+                    <h1 class="text-2xl font-bold mb-6">${t('prof_title')}</h1>
+                    <div class="bg-white p-8 rounded-2xl border shadow-sm max-w-3xl">
+                        <div class="flex items-center gap-4 mb-8 border-b pb-6">
+                            <div class="w-16 h-16 bg-[#0A58CA] text-white rounded-full flex items-center justify-center text-2xl font-bold">
+                                ${userProfile.name.split(' ').map(n=>n[0]).join('')}
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold">${userProfile.name}</h2>
+                                <p class="text-sm text-gray-500">${currentRole.toUpperCase()} ACCOUNT</p>
+                            </div>
+                        </div>
+                        <form onsubmit="saveProfile(event)" class="grid grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">${t('full_name')}</label>
+                                <input type="text" id="profName" value="${userProfile.name}" required class="w-full border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">${t('phone')}</label>
+                                <input type="text" id="profPhone" value="${userProfile.phone}" pattern="^\\+?\\d{10,15}$" required class="w-full border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">${t('email')}</label>
+                                <input type="email" id="profEmail" value="${userProfile.email}" pattern="^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" required class="w-full border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">${t('car_plate')}</label>
+                                <input type="text" id="profPlate" value="${userProfile.carPlate}" required class="w-full border p-3 rounded-lg uppercase focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                            </div>
+                            <div class="col-span-2 border-t pt-6 mt-4">
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">${t('pass')}</label>
+                                <input type="password" id="profPass" pattern="^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,}$" placeholder="********" class="w-full border p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A58CA]">
+                            </div>
+                            <div class="col-span-2 flex gap-4 mt-2">
+                                <button type="submit" class="bg-[#198754] text-white px-8 py-3 rounded-lg font-bold btn-active">${t('save_prof')}</button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+            }
+        }
+
+        // --- SEARCH & ACTIONS ---
+        function renderSearchTable() {
+            let filter = document.getElementById('searchInput')?.value.toLowerCase() || '';
+            let html = '';
+            let filtered = allBookings.filter(b => b.plate.toLowerCase().includes(filter));
+            if(filtered.length === 0) html = `<tr><td colspan="5" class="p-4 text-center text-gray-500">${t('no_vehicles')}</td></tr>`;
+            filtered.forEach(b => {
+                html += `<tr>
+                    <td class="p-4 font-mono font-bold">${b.plate}</td>
+                    <td class="p-4">Zone ${b.zone}</td>
+                    <td class="p-4">${b.duration}h</td>
+                    <td class="p-4 font-bold text-green-600">$${b.paidCost.toFixed(2)}</td>
+                    <td class="p-4 text-center"><button onclick="deleteBooking(${b.id})" class="text-red-500 hover:text-red-700 transition-colors"><i class="fas fa-trash"></i></button></td>
+                </tr>`;
+            });
+            const tbody = document.getElementById('searchTbody');
+            if(tbody) tbody.innerHTML = html;
+        }
+
+        function deleteBooking(id) {
+            if(confirm("Удалить бронь?")) {
+                allBookings = allBookings.filter(b => b.id !== id);
+                renderSearchTable();
+                updateNotifications();
+            }
+        }
+
+        // --- BOOKING LOGIC ---
+        function initiateBooking(zoneId) {
+            pendingZoneId = zoneId;
+            document.getElementById('bookPlate').value = currentRole === 'user' ? userProfile.carPlate : '';
+            openModal('bookingModal');
+        }
+
+        function confirmBooking(e) {
+            e.preventDefault();
+            let hours = parseFloat(document.getElementById('bookHours').value);
+            let plate = document.getElementById('bookPlate').value.toUpperCase();
+            let country = document.getElementById('plateCountry').value;
+
+            if (country === 'KZ' && !/^\d{3}[A-Z]{3}\d{2}$/.test(plate)) {
+                customAlert(lang==='ru' ? "Неверный формат KZ. Пример: 123ABC02" : "Invalid KZ format. Ex: 123ABC02"); return;
+            } else if (country === 'RU' && !/^[A-Z]\d{3}[A-Z]{2}\d{2,3}$/.test(plate)) {
+                customAlert(lang==='ru' ? "Неверный формат RU. Пример: A123AA77" : "Invalid RU format. Ex: A123AA77"); return;
+            } else if (!/^[A-Z0-9- ]{3,10}$/.test(plate)) {
+                customAlert(lang==='ru' ? "Неверный формат номера." : "Invalid Plate format."); return;
+            }
+
+            let z = zones.find(x => x.id === pendingZoneId);
+            let cost = hours * z.rate;
+            
+            let newBooking = { id: Date.now(), zone: z.id, zoneName: z.name, rate: z.rate, startTime: new Date(), duration: hours, plate: plate, paidCost: cost };
+
+            if(currentRole === 'user') {
+                if(wallet >= cost) {
+                    wallet -= cost;
+                    activeSessions.push(newBooking);
+                    allBookings.push(newBooking);
+                    showToast(t('success'), `${t('paid')} $${cost.toFixed(2)}`);
+                    closeModal('bookingModal');
+                    showPage('userDashboard');
+                    updateNotifications();
+                } else {
+                    customAlert(t('no_funds'));
+                    closeModal('bookingModal');
+                    openModal('topUpModal');
+                }
+            }
+        }
+
+        function renderUserDashboard() {
+            const content = document.getElementById('pageContent');
+            let sessionsHtml = '';
+            
+            if(activeSessions.length === 0) {
+                sessionsHtml = `
+                    <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200 text-center shadow-sm">
+                        <p class="text-gray-500 font-bold mb-4">${t('no_parking')}</p>
+                        <button onclick="showPage('findParking')" class="bg-[#0A58CA] text-white px-6 py-2 rounded-lg font-bold w-full">${t('find_spot')}</button>
+                    </div>`;
+            } else {
+                activeSessions.forEach(session => {
+                    const diffMs = new Date() - session.startTime;
+                    const currentHours = Math.max(session.duration, diffMs / 3600000); 
+                    const currentCost = currentHours * session.rate;
+                    const isOverdue = currentHours > session.duration;
+
+                    sessionsHtml += `
+                        <div class="bg-green-50 p-6 rounded-2xl border-2 ${isOverdue ? 'border-red-400 bg-red-50' : 'border-green-300'} shadow-sm relative overflow-hidden mb-4">
+                            <div class="absolute top-0 left-0 w-full h-1 ${isOverdue ? 'bg-red-500' : 'bg-green-500'}"></div>
+                            <span class="text-[10px] font-bold ${isOverdue ? 'text-red-700' : 'text-green-700'} uppercase tracking-widest"><i class="fas fa-car mr-1"></i> ${session.plate}</span>
+                            <h2 class="text-2xl font-bold mt-2">Zone ${session.zone}</h2>
+                            <p class="text-sm text-gray-600 mt-2"><i class="far fa-clock mr-1"></i>${t('start')}: ${session.startTime.toLocaleTimeString()}</p>
+                            <p class="text-sm text-gray-600"><i class="far fa-credit-card mr-1"></i>${t('paid_hours')}: ${session.duration}</p>
+                            <p class="text-2xl font-bold mt-3 ${isOverdue ? 'text-red-600' : 'text-green-800'}">${t('current_bill')}: $${currentCost.toFixed(2)}</p>
+                            <div class="mt-6 flex gap-2">
+                                <button onclick="endSession(${session.id}, ${currentCost})" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg btn-active font-bold text-sm shadow-md">${t('btn_end')}</button>
+                                <button onclick="extendSession(${session.id})" class="flex-1 bg-white border border-gray-300 hover:bg-gray-50 py-3 rounded-lg btn-active font-bold text-sm">${t('btn_extend')}</button>
+                            </div>
+                        </div>`;
+                });
+            }
+
+            content.innerHTML = `
+                <h1 class="text-2xl font-bold mb-8">${t('nav_my_dashboard')}</h1>
+                <div class="grid grid-cols-3 gap-8">
+                    <div class="col-span-1">
+                        ${sessionsHtml}
+                        <div class="bg-white p-6 rounded-2xl border shadow-sm mt-6">
+                            <p class="text-xs text-gray-400 font-bold uppercase">${t('wallet')}</p>
+                            <p class="text-3xl font-bold mt-1">$${wallet.toFixed(2)}</p>
+                            <button onclick="openModal('topUpModal')" class="w-full mt-4 bg-[#0A58CA] text-white py-2 rounded-lg btn-active font-bold text-sm">${t('top_up')}</button>
+                        </div>
+                    </div>
+                    <div class="col-span-2 bg-white rounded-2xl border p-6 shadow-sm self-start">
+                        <h4 class="font-bold mb-4">${t('history')}</h4>
+                        <div class="space-y-2">
+                            ${parkingHistory.length === 0 ? `<p class="text-sm text-gray-400">${t('history_empty')}</p>` : 
+                            parkingHistory.map(h => `<div class="text-sm font-semibold p-3 bg-gray-50 rounded-lg flex justify-between items-center border">
+                                <div><span class="block font-bold">Zone ${h.zone} <span class="text-xs text-gray-400 font-normal ml-2">${h.plate}</span></span>
+                                <span class="text-xs text-gray-500 block mt-1">${h.startDate} &rarr; ${h.endDate}</span></div>
+                                <span class="text-green-600 font-bold">$${h.cost.toFixed(2)}</span>
+                            </div>`).reverse().join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function extendSession(id) {
+            let session = activeSessions.find(s => s.id === id);
+            if(!session) return;
+            
+            customPrompt(t('add_hours_prompt'), "1", 'number', (extHours) => {
+                extHours = parseFloat(extHours);
+                if(isNaN(extHours) || extHours <= 0) return;
+                let cost = extHours * session.rate;
+                
+                if(wallet >= cost) {
+                    wallet -= cost;
+                    session.duration += extHours;
+                    session.paidCost += cost;
+                    showToast(t('success'), `${t('paid')} $${cost.toFixed(2)}`);
+                    showPage('userDashboard');
+                } else {
+                    customAlert(t('no_funds'));
+                    openModal('topUpModal');
+                }
+            });
+        }
+
+        function endSession(id, totalCost) {
+            let session = activeSessions.find(s => s.id === id);
+            let due = totalCost - session.paidCost; 
+            if(due > 0 && wallet < due) {
+                customAlert(`${t('no_funds')} (Due: $${due.toFixed(2)})`);
+                openModal('topUpModal');
+                return;
+            }
+            if(confirm(lang === 'ru' ? `Точно завершить парковку?` : 'End parking session?')) {
+                if(due > 0) {
+                    wallet -= due;
+                }
+                
+                // Запись в базу истории (Используется и Юзером и Админом)
+                parkingHistory.push({
+                    startDate: session.startTime.toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}),
+                    endDate: new Date().toLocaleString([], {dateStyle: 'short', timeStyle: 'short'}),
+                    zone: session.zone,
+                    plate: session.plate,
+                    cost: totalCost
+                });
+                
+                activeSessions = activeSessions.filter(s => s.id !== id);
+                allBookings = allBookings.filter(b => b.id !== id);
+                updateNotifications();
+                
+                showToast(t('success'), "Session Closed");
+                showPage('userDashboard');
+            }
+        }
+
+        function editRate(id) {
+            const z = zones.find(x => x.id === id);
+            customPrompt(`${t('new_rate_prompt')} ${z.name}:`, z.rate, 'number', (newRate) => {
+                if (newRate && !isNaN(newRate)) {
+                    z.rate = parseFloat(newRate);
+                    showToast(t('success'), t('rate_updated'));
+                    showPage('tariffs');
+                }
+            });
+        }
+
+        // --- PAYMENT & PROFILE FORMS ---
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        
+        function processTopUp(e) {
+            e.preventDefault(); 
+            const amt = parseFloat(document.getElementById('topUpAmount').value);
+            if(amt > 0) {
+                wallet += amt;
+                showToast(t('success'), `+$${amt.toFixed(2)}`);
+                closeModal('topUpModal');
+                e.target.reset();
+                if(currentPageId === 'userDashboard') showPage('userDashboard');
+            }
+        }
+
+        function saveProfile(e) {
+            e.preventDefault();
+            userProfile.name = document.getElementById('profName').value;
+            userProfile.phone = document.getElementById('profPhone').value;
+            userProfile.email = document.getElementById('profEmail').value;
+            userProfile.carPlate = document.getElementById('profPlate').value;
+            showToast(t('success'), "Profile Saved");
+            showPage('profile');
+        }
+
+        // --- MAP LOGIC ---
+        function initMap(interactive = false) {
+            setTimeout(() => {
+                if(mapInstance) { mapInstance.remove(); }
+                mapInstance = L.map('map').setView([43.2551, 76.9126], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
+                
+                let heatPoints = [];
+                
+                zones.forEach(z => {
+                    let bookedCount = allBookings.filter(b => b.zone === z.id).length;
+                    let isBusy = bookedCount > 0;
+                    
+                    let actionBtn = '';
+                    if (interactive) {
+                        if (isBusy) {
+                            actionBtn = `<button disabled class="mt-3 bg-red-100 text-red-500 px-3 py-2 rounded w-full font-bold cursor-not-allowed">${t('spot_taken')}</button>`;
+                        } else {
+                            actionBtn = `<button onclick="initiateBooking('${z.id}')" class="mt-3 bg-[#0A58CA] text-white px-3 py-2 rounded w-full font-bold">${t('book_here')}</button>`;
+                        }
+                    }
+
+                    L.circle(z.coords, { color: isBusy ? '#DC3545' : '#0A58CA', radius: 250, fillOpacity: 0.4 })
+                        .addTo(mapInstance)
+                        .bindPopup(`<b class="text-sm">${z.name}</b><br><span class="text-gray-500">Rate: $${z.rate.toFixed(2)}/hr</span><br><span class="text-xs font-bold ${isBusy?'text-red-500':'text-green-500'}">Active Cars: ${bookedCount}</span>${actionBtn}`);
+                    
+                    if(isBusy) { heatPoints.push([z.coords[0], z.coords[1], 1.0]); }
+                    else { heatPoints.push([z.coords[0], z.coords[1], 0.1]); }
+                });
+
+                if (typeof L.heatLayer !== 'undefined') {
+                    const heatLayer = L.heatLayer(heatPoints, {radius: 40, blur: 25, maxZoom: 14});
+                    const toggle = document.getElementById('heatmapToggle');
+                    if(toggle) {
+                        toggle.addEventListener('change', (e) => {
+                            if(e.target.checked) heatLayer.addTo(mapInstance);
+                            else mapInstance.removeLayer(heatLayer);
+                        });
+                    }
+                }
+            }, 200);
+        }
+
+        function showToast(title, msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastTitle').innerText = title;
+            document.getElementById('toastMsg').innerText = msg;
+            t.classList.remove('translate-y-24');
+            setTimeout(() => t.classList.add('translate-y-24'), 3000);
+        }
+
+        // Initialize
+        window.onload = () => toggleLang(lang);
+    </script>
+</body>
 </html>
