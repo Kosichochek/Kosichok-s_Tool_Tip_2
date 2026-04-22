@@ -32,7 +32,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            cursor: none; /* Скрываем стандартный курсор */
+            cursor: none;
         }
 
         body {
@@ -122,15 +122,18 @@
             padding: 20px 0;
             background: rgba(18, 18, 18, 0.8);
             backdrop-filter: blur(10px);
-            z-index: 100;
+            z-index: 1001; 
             border-bottom: 1px solid var(--glass-border);
         }
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+        nav { display: flex; justify-content: space-between; align-items: center; }
         .logo { font-weight: 800; font-size: 1.5rem; color: var(--text-main); text-decoration: none; }
+        
+        /* ПРАВКА: Стили для 5 пунктов навигации */
+        .nav-links { display: flex; gap: 20px; align-items: center; }
+        .nav-link { color: var(--text-main); text-decoration: none; font-size: 0.95rem; font-weight: 600; transition: color 0.3s; }
+        .nav-link:hover { color: var(--accent-color); }
+        @media (max-width: 850px) { .nav-links { display: none; } } /* Скрываем на мобильных, чтобы не ломать верстку */
+
         .nav-buttons { display: flex; gap: 15px; align-items: center; }
         .btn-small {
             background: transparent; border: 1px solid var(--glass-border); color: var(--text-main);
@@ -138,54 +141,64 @@
         }
         .btn-small:hover { border-color: var(--accent-color); color: var(--accent-color); }
         .lang-switch {
-            background: transparent;
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            padding: 5px 15px;
-            border-radius: 20px;
-            transition: all 0.3s;
+            background: transparent; border: 1px solid var(--glass-border); color: var(--text-main);
+            padding: 5px 15px; border-radius: 20px; transition: all 0.3s;
         }
         .lang-switch:hover { border-color: var(--accent-color); color: var(--accent-color); }
 
-        /* Auth & Cabinets (Новые правки) */
+        /* Auth & Cabinets */
         #auth-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 1000;
-            display: none; justify-content: center; align-items: center;
+            background: transparent; 
+            z-index: 1000; display: none; justify-content: center; align-items: center;
         }
         .auth-card {
-            background: #1a1a1a; padding: 40px; border-radius: 20px;
-            border: 1px solid var(--glass-border); width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 15px;
+            background: rgba(18, 18, 18, 0.6); padding: 50px 40px; border-radius: 20px;
+            border: 1px solid var(--glass-border); width: 100%; max-width: 450px; 
+            display: flex; flex-direction: column; gap: 20px; backdrop-filter: blur(15px);
+            text-align: center;
         }
-        .auth-card h3 { color: var(--accent-color); text-align: center; }
+        .auth-card h3 { color: var(--text-main); font-weight: 300; font-size: 1.5rem; }
         
+        .role-selector { display: flex; gap: 15px; width: 100%; }
+        .role-btn {
+            flex: 1; padding: 15px 10px; background: var(--glass-bg); 
+            border: 1px solid var(--glass-border); color: var(--text-muted); 
+            border-radius: 8px; transition: all 0.3s; font-weight: bold; font-family: var(--font-main);
+        }
+        .role-btn.active {
+            border-color: var(--accent-color); color: var(--accent-color); 
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.1); background: rgba(0, 212, 255, 0.05);
+        }
+
+        /* Кабинеты */
         #admin-panel, #user-profile {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-color); z-index: 500; overflow-y: auto; padding-top: 100px;
+            background: transparent; z-index: 500; overflow-y: auto; padding-top: 100px;
         }
         .admin-big-logo { 
-            font-size: clamp(3rem, 8vw, 6rem); font-weight: 900; text-align: center; 
-            letter-spacing: 5px; margin-bottom: 50px; color: var(--accent-color);
+            font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 900; text-align: center; 
+            letter-spacing: 5px; margin-bottom: 20px; color: var(--accent-color);
         }
         .messenger-box {
             background: var(--glass-bg); border: 1px solid var(--glass-border);
             border-radius: 15px; padding: 20px; max-width: 800px; margin: 0 auto;
+            backdrop-filter: blur(10px);
         }
         .msg-list { height: 350px; overflow-y: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; }
         .msg-item { padding: 12px 18px; border-radius: 10px; max-width: 80%; line-height: 1.4; }
-        .msg-user { align-self: flex-end; background: var(--accent-color); color: #000; border-bottom-right-radius: 0; }
-        .msg-admin { align-self: flex-start; background: #333; color: #fff; border-bottom-left-radius: 0; }
+        
+        .msg-self { align-self: flex-end; background: var(--accent-color); color: #000; border-bottom-right-radius: 0; }
+        .msg-other { align-self: flex-start; background: #333; color: #fff; border-bottom-left-radius: 0; }
+        
         .logout-btn { display: block; margin: 30px auto; width: max-content; }
 
         /* Hero Section */
         #hero { text-align: center; }
         .typewriter-container { height: 60px; margin-bottom: 20px; }
         #typewriter {
-            font-size: 3rem;
-            font-weight: 800;
-            background: linear-gradient(90deg, #fff, var(--accent-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 3rem; font-weight: 800; background: linear-gradient(90deg, #fff, var(--accent-color));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
         .cursor-blink { animation: blink 1s infinite; color: var(--accent-color); font-size: 3rem; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
@@ -193,105 +206,38 @@
         .hero-subtitle { font-size: 1.2rem; color: var(--text-muted); margin-bottom: 40px; }
         
         .cta-btn {
-            display: inline-block;
-            padding: 15px 40px;
-            background: transparent;
-            color: var(--accent-color);
-            border: 1px solid var(--accent-color);
-            border-radius: 30px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            text-decoration: none;
-            transition: all 0.3s;
-            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+            display: inline-block; padding: 15px 40px; background: transparent;
+            color: var(--accent-color); border: 1px solid var(--accent-color);
+            border-radius: 30px; font-size: 1.1rem; font-weight: 600; text-transform: uppercase;
+            text-decoration: none; transition: all 0.3s; box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
         }
-        .cta-btn:hover {
-            background: var(--accent-color);
-            color: var(--bg-color);
-            box-shadow: 0 0 30px rgba(0, 212, 255, 0.6);
-        }
+        .cta-btn:hover { background: var(--accent-color); color: var(--bg-color); box-shadow: 0 0 30px rgba(0, 212, 255, 0.6); }
 
         /* About Section (Terminal Style) */
-        .terminal {
-            background: #0a0a0a;
-            border-radius: 10px;
-            border: 1px solid var(--glass-border);
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .terminal-header {
-            background: #1a1a1a;
-            padding: 10px 20px;
-            display: flex;
-            gap: 8px;
-            border-bottom: 1px solid var(--glass-border);
-        }
+        .terminal { background: #0a0a0a; border-radius: 10px; border: 1px solid var(--glass-border); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .terminal-header { background: #1a1a1a; padding: 10px 20px; display: flex; gap: 8px; border-bottom: 1px solid var(--glass-border); }
         .dot { width: 12px; height: 12px; border-radius: 50%; }
         .dot.r { background: #ff5f56; } .dot.y { background: #ffbd2e; } .dot.g { background: #27c93f; }
-        .terminal-body {
-            padding: 30px;
-            font-family: var(--font-mono);
-            color: #a9dc76;
-            font-size: 1rem;
-        }
+        .terminal-body { padding: 30px; font-family: var(--font-mono); color: #a9dc76; font-size: 1rem; }
         .prompt::before { content: 'architect@root:~$ '; color: var(--accent-color); }
 
         /* Skills Section */
-        .chart-container {
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-            background: var(--glass-bg);
-            border-radius: 20px;
-            padding: 20px;
-            border: 1px solid var(--glass-border);
-            backdrop-filter: blur(10px);
-        }
+        .chart-container { width: 100%; max-width: 600px; margin: 0 auto; background: var(--glass-bg); border-radius: 20px; padding: 20px; border: 1px solid var(--glass-border); backdrop-filter: blur(10px); }
 
         /* Experience Section */
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
         @media (min-width: 768px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-        
-        .card {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            padding: 30px;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-        .card:hover {
-            transform: translateY(-10px);
-            border-color: var(--accent-color);
-            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.1);
-        }
+        .card { background: var(--glass-bg); border: 1px solid var(--glass-border); padding: 30px; border-radius: 15px; backdrop-filter: blur(10px); transition: transform 0.3s, box-shadow 0.3s; }
+        .card:hover { transform: translateY(-10px); border-color: var(--accent-color); box-shadow: 0 10px 30px rgba(0, 212, 255, 0.1); }
         .card h3 { margin-bottom: 10px; font-size: 1.5rem; }
         .card p { color: var(--text-muted); }
 
         /* Contacts & Form */
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            max-width: 500px;
-            margin: 0 auto;
-        }
+        form { display: flex; flex-direction: column; gap: 20px; max-width: 500px; margin: 0 auto; }
         .input-group { position: relative; display: flex; width: 100%; gap: 10px;}
         input, textarea, select {
-            width: 100%;
-            padding: 15px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 8px;
-            color: var(--text-main);
-            font-family: var(--font-main);
-            transition: all 0.3s;
-            outline: none;
+            width: 100%; padding: 15px; background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: 8px; color: var(--text-main); font-family: var(--font-main); transition: all 0.3s; outline: none;
         }
         textarea { resize: vertical; min-height: 120px; }
         input:focus, textarea:focus, select:focus { border-color: var(--accent-color); }
@@ -299,33 +245,17 @@
         /* Валидация */
         input.invalid { border-color: var(--error-color); }
         input.valid { border-color: var(--success-color); }
-        .status-icon {
-            position: absolute; right: 15px; top: 15px;
-            display: none; width: 20px; height: 20px;
-        }
+        .status-icon { position: absolute; right: 15px; top: 15px; display: none; width: 20px; height: 20px; }
         
         button {
-            padding: 15px;
-            background: var(--accent-color);
-            color: var(--bg-color);
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            transition: opacity 0.3s;
+            padding: 15px; background: var(--accent-color); color: var(--bg-color); border: none;
+            border-radius: 8px; font-weight: bold; font-size: 1.1rem; transition: opacity 0.3s;
         }
         button:disabled { opacity: 0.5; background: var(--text-muted); }
 
         /* Footer */
-        footer {
-            text-align: center;
-            padding: 40px 0;
-            border-top: 1px solid var(--glass-border);
-            margin-top: 50px;
-        }
-        .socials svg {
-            width: 30px; height: 30px; fill: var(--text-muted); margin: 0 15px; transition: fill 0.3s, filter 0.3s;
-        }
+        footer { text-align: center; padding: 40px 0; border-top: 1px solid var(--glass-border); margin-top: 50px; }
+        .socials svg { width: 30px; height: 30px; fill: var(--text-muted); margin: 0 15px; transition: fill 0.3s, filter 0.3s; }
         .socials svg:hover { fill: var(--accent-color); filter: drop-shadow(0 0 8px var(--accent-color)); }
 
         /* Hover Classes for JS Cursor */
@@ -340,14 +270,17 @@
 
     <div id="auth-overlay">
         <form class="auth-card" id="auth-form" onsubmit="handleAuth(event)">
-            <h3>Вход в систему</h3>
-            <input type="text" id="auth-name" placeholder="Имя (мин. 2 буквы)" class="interactable" required>
-            <select id="auth-role" class="interactable">
-                <option value="user">Пользователь</option>
-                <option value="admin">Администратор</option>
-            </select>
-            <button type="submit" class="interactable">Войти / Регистрация</button>
-            <button type="button" class="interactable" style="background:none; color:var(--text-muted); padding: 5px;" onclick="closeAuth()">Отмена</button>
+            <div class="admin-big-logo" style="margin-bottom: 0;">ARCH_<span style="color: var(--accent-color)">IT</span></div>
+            <h3>Представьтесь для входа</h3>
+            
+            <input type="text" id="auth-name" placeholder="Имя (мин. 2 буквы)" class="interactable" style="text-align: center;" required>
+            
+            <div class="role-selector">
+                <button type="button" class="role-btn interactable active" id="btn-role-user" onclick="selectRole('user')">Пользователь</button>
+                <button type="button" class="role-btn interactable" id="btn-role-admin" onclick="selectRole('admin')">Администратор</button>
+            </div>
+
+            <button type="submit" class="interactable" style="margin-top: 10px;">Продолжить</button>
         </form>
     </div>
 
@@ -362,7 +295,7 @@
                     <button onclick="sendMessage('admin')" class="interactable" style="width: auto; padding: 0 30px;">Отправить</button>
                 </div>
             </div>
-            <button onclick="logout()" class="interactable logout-btn">Вернуться на лендинг</button>
+            <button onclick="logout()" class="interactable logout-btn">Вернуться на стартовый экран</button>
         </div>
     </div>
 
@@ -376,14 +309,23 @@
                     <button onclick="sendMessage('user')" class="interactable" style="width: auto; padding: 0 30px;">Отправить</button>
                 </div>
             </div>
-            <button onclick="logout()" class="interactable logout-btn">Вернуться на лендинг</button>
+            <button onclick="logout()" class="interactable logout-btn">Вернуться на стартовый экран</button>
         </div>
     </div>
 
-    <header>
+    <header id="main-header">
         <div class="container">
             <nav>
                 <a href="#hero" class="logo interactable">ARCH_<span style="color: var(--accent-color)">IT</span></a>
+                
+                <div class="nav-links">
+                    <a href="#hero" class="nav-link interactable" data-i18n="navHero">Главный</a>
+                    <a href="#about" class="nav-link interactable" data-i18n="navAbout">О нас</a>
+                    <a href="#skills" class="nav-link interactable" data-i18n="navServices">Услуги/товары</a>
+                    <a href="#experience" class="nav-link interactable" data-i18n="navExtra">Доп. экран</a>
+                    <a href="#contacts" class="nav-link interactable" data-i18n="navContacts">Контакты</a>
+                </div>
+
                 <div class="nav-buttons">
                     <button class="btn-small interactable" onclick="openAuth()">Аккаунт</button>
                     <button class="lang-switch interactable" id="langToggle">EN</button>
@@ -488,7 +430,6 @@
         const cursor = document.getElementById('custom-cursor');
         const glow = document.getElementById('bg-glow');
         
-        // Обновляем список интерактивных элементов для курсора
         const interactables = document.querySelectorAll('.interactable, button, a, input, textarea, select');
 
         document.addEventListener('mousemove', (e) => {
@@ -506,23 +447,28 @@
         // --- Auth, Роли и Мессенджер ---
         let activeUser = JSON.parse(localStorage.getItem('activeUser')) || null;
         let chatMessages = JSON.parse(localStorage.getItem('chatMessages')) || [];
+        let selectedRole = 'user'; 
+
+        function selectRole(role) {
+            selectedRole = role;
+            document.getElementById('btn-role-user').classList.remove('active');
+            document.getElementById('btn-role-admin').classList.remove('active');
+            document.getElementById(`btn-role-${role}`).classList.add('active');
+        }
 
         function openAuth() {
             if (activeUser) {
                 showDashboard();
             } else {
+                document.getElementById('main-content').style.display = 'none';
+                document.getElementById('main-footer').style.display = 'none';
                 document.getElementById('auth-overlay').style.display = 'flex';
             }
-        }
-        
-        function closeAuth() { 
-            document.getElementById('auth-overlay').style.display = 'none'; 
         }
 
         function handleAuth(e) {
             e.preventDefault();
             const name = document.getElementById('auth-name').value.trim();
-            const role = document.getElementById('auth-role').value;
             const nameValidationRegex = /^[а-яА-Яa-zA-Z\s]{2,}$/;
             
             if (!nameValidationRegex.test(name)) {
@@ -530,13 +476,14 @@
                 return;
             }
 
-            activeUser = { name, role };
+            activeUser = { name, role: selectedRole };
             localStorage.setItem('activeUser', JSON.stringify(activeUser));
-            closeAuth();
+            document.getElementById('auth-overlay').style.display = 'none';
             showDashboard();
         }
 
         function showDashboard() {
+            document.getElementById('main-header').style.display = 'block';
             document.getElementById('main-content').style.display = 'none';
             document.getElementById('main-footer').style.display = 'none';
             
@@ -555,8 +502,7 @@
             localStorage.removeItem('activeUser');
             document.getElementById('admin-panel').style.display = 'none';
             document.getElementById('user-profile').style.display = 'none';
-            document.getElementById('main-content').style.display = 'block';
-            document.getElementById('main-footer').style.display = 'block';
+            openAuth(); 
         }
 
         function updateChatUI(role) {
@@ -565,9 +511,15 @@
             chatContainer.innerHTML = '';
             
             chatMessages.forEach(msg => {
+                const isSelf = msg.senderRole === activeUser.role;
+                let displayName = msg.senderName;
+                if (activeUser.role === 'user' && msg.senderRole === 'admin') {
+                    displayName = 'Администратор';
+                }
+
                 const messageDiv = document.createElement('div');
-                messageDiv.className = `msg-item ${msg.senderRole === 'admin' ? 'msg-admin' : 'msg-user'}`;
-                messageDiv.innerHTML = `<strong>${msg.authorName}:</strong> ${msg.content}`;
+                messageDiv.className = `msg-item ${isSelf ? 'msg-self' : 'msg-other'}`;
+                messageDiv.innerHTML = `<strong>${displayName}:</strong> ${msg.content}`;
                 chatContainer.appendChild(messageDiv);
             });
             chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -581,7 +533,7 @@
             if (!text) return;
 
             chatMessages.push({
-                authorName: role === 'admin' ? 'Администратор' : activeUser.name,
+                senderName: activeUser.name, 
                 content: text,
                 senderRole: role
             });
@@ -591,7 +543,7 @@
             updateChatUI(role);
         }
 
-        // --- Умная валидация контактной формы (Имя и Email) ---
+        // --- Умная валидация контактной формы ---
         const nameInputForm = document.getElementById('name');
         const emailInput = document.getElementById('email');
         const submitBtn = document.getElementById('submitBtn');
@@ -600,13 +552,12 @@
         const iconInvalid = document.querySelector('.invalid-icon');
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const nameRegex = /^[а-яА-Яa-zA-Z\s]{2,}$/; // Только буквы, мин 2
+        const nameRegex = /^[а-яА-Яa-zA-Z\s]{2,}$/; 
 
         const validateContactForm = () => {
             const isEmailValid = emailRegex.test(emailInput.value);
             const isNameValid = nameRegex.test(nameInputForm.value);
 
-            // Email UI
             if (emailInput.value === '') {
                 emailInput.className = 'interactable';
                 iconValid.style.display = 'none';
@@ -619,7 +570,6 @@
                 iconValid.style.display = 'none'; iconInvalid.style.display = 'block';
             }
 
-            // Name UI
             if (nameInputForm.value === '') {
                 nameInputForm.className = 'interactable';
             } else if (isNameValid) {
@@ -655,9 +605,14 @@
             }, 1500);
         });
 
-        // --- Мультиязычность (i18n) ---
+        // --- Мультиязычность ---
         const i18n = {
             ru: {
+                navHero: "Главный",
+                navAbout: "О нас",
+                navServices: "Услуги/товары",
+                navExtra: "Доп. экран",
+                navContacts: "Контакты",
                 heroTitle: "ИТ-Архитектор",
                 heroSubtitle: "Проектирую отказоустойчивые и масштабируемые системы.",
                 cta: "Обсудить проект",
@@ -674,6 +629,11 @@
                 chartLabels: ['Архитектура БД', 'Микросервисы', 'Облака (AWS/K8s)', 'Python/Go', 'CI/CD']
             },
             en: {
+                navHero: "Main",
+                navAbout: "About Us",
+                navServices: "Services/Goods",
+                navExtra: "Extra Screen",
+                navContacts: "Contacts",
                 heroTitle: "IT Architect",
                 heroSubtitle: "Designing fault-tolerant and scalable systems.",
                 cta: "Discuss Project",
@@ -717,7 +677,7 @@
             translatePage();
         });
 
-        // --- Эффект печатающегося текста ---
+        // --- Эффекты ---
         let typingTimeout;
         const startTypingEffect = (text) => {
             const el = document.getElementById('typewriter');
@@ -734,7 +694,6 @@
             typeWriter();
         };
 
-        // --- Интерактивный график (Chart.js) ---
         let skillsChartInstance = null;
         const initChart = () => {
             const ctx = document.getElementById('skillsChart').getContext('2d');
@@ -773,7 +732,6 @@
             });
         };
 
-        // --- Анимация появления при скролле ---
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -781,13 +739,13 @@
                 }
             });
         }, { threshold: 0.1 });
-
         document.querySelectorAll('section').forEach(sec => observer.observe(sec));
 
-        // Инициализация при загрузке
+        // Инициализация
         window.addEventListener('DOMContentLoaded', () => {
             translatePage(); 
             initChart();     
+            openAuth(); 
         });
 
     </script>
