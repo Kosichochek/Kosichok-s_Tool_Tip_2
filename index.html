@@ -13,6 +13,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
+        /* ПРАВКА: Плавная прокрутка при клике на верхнее меню */
+        html { scroll-behavior: smooth; }
+
         /* CSS Variables */
         :root {
             --bg-color: #121212;
@@ -128,11 +131,10 @@
         nav { display: flex; justify-content: space-between; align-items: center; }
         .logo { font-weight: 800; font-size: 1.5rem; color: var(--text-main); text-decoration: none; }
         
-        /* ПРАВКА: Стили для 5 пунктов навигации */
         .nav-links { display: flex; gap: 20px; align-items: center; }
         .nav-link { color: var(--text-main); text-decoration: none; font-size: 0.95rem; font-weight: 600; transition: color 0.3s; }
         .nav-link:hover { color: var(--accent-color); }
-        @media (max-width: 850px) { .nav-links { display: none; } } /* Скрываем на мобильных, чтобы не ломать верстку */
+        @media (max-width: 850px) { .nav-links { display: none; } } 
 
         .nav-buttons { display: flex; gap: 15px; align-items: center; }
         .btn-small {
@@ -171,11 +173,17 @@
             box-shadow: 0 0 15px rgba(0, 212, 255, 0.1); background: rgba(0, 212, 255, 0.05);
         }
 
-        /* Кабинеты */
-        #admin-panel, #user-profile {
+        /* ПРАВКА: Стили для кабинета пользователя (теперь как overlay поверх лендинга) */
+        #user-profile {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: transparent; z-index: 500; overflow-y: auto; padding-top: 100px;
+            background: rgba(18, 18, 18, 0.98); z-index: 1005; overflow-y: auto; padding-top: 100px;
         }
+
+        #admin-panel {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); z-index: 500; overflow-y: auto; padding-top: 100px;
+        }
+
         .admin-big-logo { 
             font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 900; text-align: center; 
             letter-spacing: 5px; margin-bottom: 20px; color: var(--accent-color);
@@ -213,7 +221,7 @@
         }
         .cta-btn:hover { background: var(--accent-color); color: var(--bg-color); box-shadow: 0 0 30px rgba(0, 212, 255, 0.6); }
 
-        /* About Section (Terminal Style) */
+        /* About Section */
         .terminal { background: #0a0a0a; border-radius: 10px; border: 1px solid var(--glass-border); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .terminal-header { background: #1a1a1a; padding: 10px 20px; display: flex; gap: 8px; border-bottom: 1px solid var(--glass-border); }
         .dot { width: 12px; height: 12px; border-radius: 50%; }
@@ -295,7 +303,7 @@
                     <button onclick="sendMessage('admin')" class="interactable" style="width: auto; padding: 0 30px;">Отправить</button>
                 </div>
             </div>
-            <button onclick="logout()" class="interactable logout-btn">Вернуться на стартовый экран</button>
+            <button onclick="logout()" class="interactable logout-btn" style="background: transparent; border: 1px solid var(--error-color); color: var(--error-color);">Выйти из системы</button>
         </div>
     </div>
 
@@ -309,7 +317,10 @@
                     <button onclick="sendMessage('user')" class="interactable" style="width: auto; padding: 0 30px;">Отправить</button>
                 </div>
             </div>
-            <button onclick="logout()" class="interactable logout-btn">Вернуться на стартовый экран</button>
+            <div style="display:flex; justify-content:center; gap:20px; margin-top:30px;">
+                <button onclick="closeUserProfile()" class="interactable">Закрыть кабинет (К сайту)</button>
+                <button onclick="logout()" class="interactable" style="background: transparent; border: 1px solid var(--error-color); color: var(--error-color);">Выйти из аккаунта</button>
+            </div>
         </div>
     </div>
 
@@ -327,7 +338,7 @@
                 </div>
 
                 <div class="nav-buttons">
-                    <button class="btn-small interactable" onclick="openAuth()">Аккаунт</button>
+                    <button class="btn-small interactable" id="btn-account" onclick="openAuth()">Аккаунт</button>
                     <button class="lang-switch interactable" id="langToggle">EN</button>
                 </div>
             </nav>
@@ -456,14 +467,25 @@
             document.getElementById(`btn-role-${role}`).classList.add('active');
         }
 
+        // ПРАВКА: Логика открытия кабинета/входа
         function openAuth() {
             if (activeUser) {
-                showDashboard();
+                if (activeUser.role === 'user') {
+                    // Если пользователь авторизован, кнопка "Аккаунт" открывает его кабинет поверх сайта
+                    document.getElementById('user-profile').style.display = 'block';
+                    document.getElementById('user-display-name').textContent = activeUser.name;
+                    updateChatUI('user');
+                }
             } else {
                 document.getElementById('main-content').style.display = 'none';
                 document.getElementById('main-footer').style.display = 'none';
                 document.getElementById('auth-overlay').style.display = 'flex';
             }
+        }
+        
+        // ПРАВКА: Логика закрытия кабинета пользователя (возврат к лендингу)
+        function closeUserProfile() {
+            document.getElementById('user-profile').style.display = 'none';
         }
 
         function handleAuth(e) {
@@ -482,18 +504,26 @@
             showDashboard();
         }
 
+        // ПРАВКА: Логика отображения интерфейсов в зависимости от роли
         function showDashboard() {
-            document.getElementById('main-header').style.display = 'block';
-            document.getElementById('main-content').style.display = 'none';
-            document.getElementById('main-footer').style.display = 'none';
-            
             if (activeUser.role === 'admin') {
+                // Админ не видит лендинг, он видит только панель управления
+                document.getElementById('main-header').style.display = 'none'; 
+                document.getElementById('main-content').style.display = 'none';
+                document.getElementById('main-footer').style.display = 'none';
                 document.getElementById('admin-panel').style.display = 'block';
                 updateChatUI('admin');
             } else {
-                document.getElementById('user-profile').style.display = 'block';
-                document.getElementById('user-display-name').textContent = activeUser.name;
-                updateChatUI('user');
+                // Пользователь видит Лендинг с меню. Кабинет скрыт до нажатия на "Кабинет"
+                document.getElementById('main-header').style.display = 'block';
+                document.getElementById('main-content').style.display = 'block';
+                document.getElementById('main-footer').style.display = 'block';
+                document.getElementById('admin-panel').style.display = 'none';
+                document.getElementById('user-profile').style.display = 'none';
+                
+                // Меняем текст кнопки Аккаунта
+                const btnAcc = document.getElementById('btn-account');
+                btnAcc.textContent = (currentLang === 'ru' ? 'Кабинет (' : 'Profile (') + activeUser.name + ')';
             }
         }
 
@@ -502,6 +532,9 @@
             localStorage.removeItem('activeUser');
             document.getElementById('admin-panel').style.display = 'none';
             document.getElementById('user-profile').style.display = 'none';
+            
+            // Возвращаем название кнопки
+            document.getElementById('btn-account').textContent = currentLang === 'ru' ? 'Аккаунт' : 'Account';
             openAuth(); 
         }
 
@@ -514,7 +547,7 @@
                 const isSelf = msg.senderRole === activeUser.role;
                 let displayName = msg.senderName;
                 if (activeUser.role === 'user' && msg.senderRole === 'admin') {
-                    displayName = 'Администратор';
+                    displayName = currentLang === 'ru' ? 'Администратор' : 'Admin';
                 }
 
                 const messageDiv = document.createElement('div');
@@ -631,8 +664,8 @@
             en: {
                 navHero: "Main",
                 navAbout: "About Us",
-                navServices: "Services/Goods",
-                navExtra: "Extra Screen",
+                navServices: "Services",
+                navExtra: "Experience",
                 navContacts: "Contacts",
                 heroTitle: "IT Architect",
                 heroSubtitle: "Designing fault-tolerant and scalable systems.",
@@ -665,6 +698,12 @@
                 if (data[key]) el.setAttribute('placeholder', data[key]);
             });
             startTypingEffect(data.heroTitle);
+            
+            // ПРАВКА: Обновляем текст кнопки Аккаунта при смене языка
+            if (activeUser && activeUser.role === 'user') {
+                document.getElementById('btn-account').textContent = (currentLang === 'ru' ? 'Кабинет (' : 'Profile (') + activeUser.name + ')';
+            }
+
             if (skillsChartInstance) {
                 skillsChartInstance.data.labels = data.chartLabels;
                 skillsChartInstance.update();
